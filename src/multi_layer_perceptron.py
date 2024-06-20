@@ -50,7 +50,8 @@ class MultiLayerPerceptron():
         self.learning_rate = learning_rate
         self.X = np.insert(inputs, 0, 1, axis=1)
 
-        self.expected_range = (np.min(expected_outputs), np.max(expected_outputs))
+        self.expected_range = (np.min(expected_outputs),
+                               np.max(expected_outputs))
         self.Y = feature_scaling(expected_outputs, self.expected_range, (0, 1))
 
         self.hidden_nodes = hidden_nodes
@@ -179,7 +180,7 @@ class MultiLayerPerceptron():
                 break
 
             if epoch % 1000 == 0:
-                print(f"{epoch=} ; output={feature_scaling(O_predicted, (0, 1), self.expected_range) } ; error={ self.compute_error(O_predicted)}")
+                print(f"{epoch=} ; output={feature_scaling(O_predicted, (0, 1), self.expected_range)} ; error={self.compute_error(O_predicted)}")
 
             error = self.compute_error(O_predicted)
             errors.append(error)
@@ -194,55 +195,33 @@ class MultiLayerPerceptron():
         # if (self.is_converged(O_predicted)):
         #     plt.show()
 
-        print(f"{epoch=} ; output={feature_scaling(O_predicted, (0, 1), self.expected_range) } ; error={ self.compute_error(O_predicted)}")
+        print(f"{epoch=} ; output={feature_scaling(O_predicted, (0, 1), self.expected_range)} ; error={self.compute_error(O_predicted)}")
         return O_predicted, epoch, self.is_converged(O_predicted)
 
     def backward_propagation(self, h1_outputs, V1_inputs, h2_output, O_predicted):
-        # Update output layer weights
-        output_errors = self.Y.T[0] - O_predicted  # Compute output errors
-        dO = output_errors * self.activation_func_derivative(h2_output)  # Compute derivative of activation function
-        dW_output = self.learning_rate * dO.dot(V1_inputs[-1].T)  # Compute weight gradients for output layer
-        # Update output layer weights
+        output_errors = self.Y.T[0] - O_predicted
+        dO = output_errors * self.activation_func_derivative(h2_output)
+        dW_output = self.learning_rate * dO.dot(V1_inputs[-1].T)
         self.weights[-1] += dW_output
 
-        # Initialize delta for next layer
         delta_next = dO
 
-        # Backpropagate through hidden layers
         for i in range(len(self.weights) - 2, -1, -1):
-            # Compute delta for current hidden layer
-            weights_without_bias = self.weights[i + 1][:, 1:]  # Exclude bias weights
-            # print("Shapes:")
-            # print("weights_without_bias:", weights_without_bias.shape)
-            # print("delta_next:", delta_next.shape)
-
-            # Compute delta_current for hidden layer
-            delta_current = weights_without_bias.T.dot(delta_next) * self.activation_func_derivative(h1_outputs[i])
-            # print("delta_current:", delta_current.shape)
-            # print("V1_inputs[i]:", V1_inputs[i].shape)
-
-            # Compute weight gradients for current hidden layer
-            # Compute weight gradients for current hidden layer
-            # Compute weight gradients for current hidden layer
+            weights_without_bias = self.weights[i + 1][:, 1:]
+            delta_current = weights_without_bias.T.dot(
+                delta_next) * self.activation_func_derivative(h1_outputs[i])
             dW_hidden = self.learning_rate * delta_current.dot(V1_inputs[i].T)
-            # Pad dW_hidden with zeros to match the shape of self.weights[i]
             num_cols_diff = self.weights[i].shape[1] - dW_hidden.shape[1]
-            dW_hidden = np.concatenate((dW_hidden, np.zeros((dW_hidden.shape[0], num_cols_diff))), axis=1)
-
-            # print("dW_hidden:", dW_hidden.shape)
-            # print("self.weights[i]:", self.weights[i].shape)
-
-            # Update weights for current hidden layer
+            dW_hidden = np.concatenate((dW_hidden, np.zeros(
+                (dW_hidden.shape[0], num_cols_diff))), axis=1)
             self.weights[i] += dW_hidden
-
-            # Update delta for next layer
             delta_next = delta_current
-
 
     def train(self, max_epochs: int):
         for epoch in range(max_epochs):
             input = self.training_strategy(self.X)
-            h1_outputs, V1_inputs, h2_output, O_predicted = self.forward_propagation(input)
+            h1_outputs, V1_inputs, h2_output, O_predicted = self.forward_propagation(
+                input)
 
             if self.is_converged(O_predicted):
                 break
@@ -251,7 +230,8 @@ class MultiLayerPerceptron():
                 # print(f"{epoch=} ; output={O_predicted} ; error={self.compute_error(O_predicted)}")
                 print(f"{epoch=} ; output={feature_scaling(O_predicted, (0, 1), self.expected_range) } ; error={ self.compute_error(O_predicted)}")
 
-            self.backward_propagation(h1_outputs, V1_inputs, h2_output, O_predicted)
+            self.backward_propagation(
+                h1_outputs, V1_inputs, h2_output, O_predicted)
 
         return O_predicted, epoch, self.is_converged(O_predicted)
 
