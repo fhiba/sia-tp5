@@ -1,5 +1,5 @@
 import numpy as np
-import time
+import pickle
 
 
 def batch(X):
@@ -34,7 +34,8 @@ class MultiLayerPerceptron():
         activation_func=exp_activation_func,
         activation_func_derivative=exp_activation_func_derivative,
         training_strategy=batch,
-        activation_func_range=(0, 1)
+        activation_func_range=(0, 1),
+        percentage_threshold=0.000001
     ):
         # Add one to the input to have the bias
         dimensions = [input_size + 1] + hidden_node_sizes + [output_size]
@@ -45,6 +46,10 @@ class MultiLayerPerceptron():
             matrix = np.random.randn(rows, cols)
             matrices.append(matrix)
         self.weights = matrices
+        self.min_weights = self.weights
+        self.min_error = 100000000
+
+        self.dimensions = dimensions
 
         self.learning_rate = learning_rate
         self.activation_func = activation_func
@@ -54,6 +59,7 @@ class MultiLayerPerceptron():
         self.input_range = input_range
         self.expected_range = expected_range
         self.activation_func_range = activation_func_range
+        self.percentage_threshold = percentage_threshold
         self.initialize_adam_params()  # Initialize Adam parameters
 
     def initialize_adam_params(self):
@@ -63,6 +69,11 @@ class MultiLayerPerceptron():
         self.beta2 = 0.999  # Recommended value
         self.epsilon = 1e-8  # Recommended value
         self.t = 0  # Time step counter
+
+    def predict_with_error(self, input, expected):
+        result = self.predict(input)
+        error = self.compute_error(np.array(result), np.array(expected))
+        return result, error
 
     def predict(self, input):
         for i in range(len(input)):
@@ -83,10 +94,6 @@ class MultiLayerPerceptron():
             activations[-1], self.activation_func_range, self.expected_range)
 
     def train(self, dataset, expected, max_epochs: int = 1000):
-        # for i in range(len(dataset)):
-        #     dataset[i] = feature_scaling(
-        #         np.array(dataset[i]), self.input_range, self.activation_func_range).tolist()
-
         for i in range(len(expected)):
             expected[i] = feature_scaling(
                 np.array(expected[i]), self.expected_range, self.activation_func_range).tolist()
@@ -95,11 +102,28 @@ class MultiLayerPerceptron():
             inputs = self.training_strategy(dataset)
             inputs = [[1] + s for s in inputs]
             dWs = []
+            outputs = []
             for input, target in zip(inputs, expected):
                 h_outputs, v_inputs = self.forward_propagation(input)
+                outputs.append(v_inputs[-1])
+
                 dWs.append(self.backward_propagation(
                     h_outputs, v_inputs, target))
+
+            error = self.compute_error(np.array(outputs), np.array(expected))
+            if epoch % 1000 == 0:
+                print(error)
+
+            if self.min_error > error:
+                self.min_error = error
+                self.min_weights = self.weights
+
+            if self.is_converged(error):
+                break
+
             self.update_weights_adam(dWs)
+        self.weights = self.min_weights
+        return self.min_error
 
     def forward_propagation(self, input):
         h_outputs = []
@@ -140,9 +164,28 @@ class MultiLayerPerceptron():
         for i in range(len(self.weights)):
             for dW in dWs:
                 self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * dW[i]
-                self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (dW[i] ** 2)
+                self.v[i] = self.beta2 * self.v[i] + \
+                    (1 - self.beta2) * (dW[i] ** 2)
 
                 m_hat = self.m[i] / (1 - self.beta1 ** self.t)
                 v_hat = self.v[i] / (1 - self.beta2 ** self.t)
 
-                self.weights[i] += alpha * m_hat / (np.sqrt(v_hat) + self.epsilon)
+                self.weights[i] += alpha * m_hat / \
+                    (np.sqrt(v_hat) + self.epsilon)
+
+    def is_converged(self, error):
+        expected_amplitude = self.expected_range[1] - self.expected_range[0]
+        return error < self.percentage_threshold * expected_amplitude
+
+    def compute_error(self, predicted, expected):
+        output_errors = predicted - expected
+        return np.power(abs(output_errors), 2).sum() / self.weights[0].shape[0]
+
+    def save_model(self, file_path):
+        with open(file_path, 'wb') as file:
+            pickle.dump(self, file)
+
+    @staticmethod
+    def load_model(file_path):
+        with open(file_path, 'rb') as file:
+            return pickle.load(file)
