@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     learning_rates = [0.001]
     hidden_layers = [
-        [28, 22, 17, 10, 5]
+        [28, 22, 17, 10]
     ]
 
     # Iterate through all combinations of learning rates and hidden layers
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         # Create and train the autoencoder
         ae = Autoencoder(learning_rate, len(
             b[0]), hidden_layer, (0, 1), (0, 1))
-        error = ae.train(b, b, 10000)
+        error = ae.train(b, b, 25000)
 
         # Save the model with a timestamp and the error rate in the filename
         current_datetime = datetime.now()

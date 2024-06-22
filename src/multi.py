@@ -36,7 +36,8 @@ class MultiLayerPerceptron():
         activation_func_derivative=exp_activation_func_derivative,
         training_strategy=batch,
         activation_func_range=(0, 1),
-        percentage_threshold=0.000001
+        percentage_threshold=0.000001,
+        adaptative_eta=False
     ):
         # Add one to the input to have the bias
         dimensions = [input_size + 1] + hidden_node_sizes + [output_size]
@@ -53,6 +54,12 @@ class MultiLayerPerceptron():
         self.dimensions = dimensions
 
         self.learning_rate = learning_rate
+        self.original_learning_rate = learning_rate
+        self.max_learning_rate = learning_rate
+        self.min_learning_rate = 0.0005
+        self.adaptative_eta = adaptative_eta
+
+
         self.activation_func = activation_func
         self.activation_func_derivative = activation_func_derivative
         self.training_strategy = training_strategy
@@ -62,6 +69,7 @@ class MultiLayerPerceptron():
         self.activation_func_range = activation_func_range
         self.percentage_threshold = percentage_threshold
         self.initialize_adam_params()  # Initialize Adam parameters
+        self.initialize_momentum_params()
 
     def initialize_adam_params(self):
         self.m = [np.zeros_like(weight) for weight in self.weights]
@@ -70,6 +78,10 @@ class MultiLayerPerceptron():
         self.beta2 = 0.999  # Recommended value
         self.epsilon = 1e-8  # Recommended value
         self.t = 0  # Time step counter
+
+    def initialize_momentum_params(self):
+        self.beta = 0.9
+        self.velocity = [np.zeros_like(w) for w in self.weights]  # Initialize velocity
 
     def predict_with_error(self, input, expected):
         result = self.predict(input)
@@ -93,6 +105,14 @@ class MultiLayerPerceptron():
         # Return output of the last layer (predictions)
         return feature_scaling(
             activations[-1], self.activation_func_range, self.expected_range)
+
+    def update_learning_rate(self, current_epoch, total_epochs):
+        if self.adaptative_eta:
+            self.learning_rate = self.min_learning_rate + \
+                (self.max_learning_rate - self.min_learning_rate) * \
+                ((total_epochs - current_epoch) / total_epochs)
+            if self.learning_rate < self.min_learning_rate:
+                self.learning_rate = self.min_learning_rate
 
     def train(self, dataset, expected, max_epochs: int = 1000):
         for i in range(len(expected)):
@@ -124,6 +144,7 @@ class MultiLayerPerceptron():
                 break
 
             self.update_weights_adam(dWs)
+            self.update_learning_rate(epoch, max_epochs)
         self.weights = self.min_weights
         return self.min_error
 
@@ -174,6 +195,13 @@ class MultiLayerPerceptron():
 
                 self.weights[i] += alpha * m_hat / \
                     (np.sqrt(v_hat) + self.epsilon)
+
+    def update_weights_momentum(self, dWs):
+        alpha = self.learning_rate
+        for i in range(len(self.weights)):
+            for dW in dWs:
+                self.velocity[i] = self.beta * self.velocity[i] + (1 - self.beta) * dW[i]
+                self.weights[i] -= alpha * self.velocity[i]
 
     def is_converged(self, error):
         expected_amplitude = self.expected_range[1] - self.expected_range[0]

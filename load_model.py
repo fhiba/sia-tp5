@@ -126,15 +126,41 @@ if __name__ == "__main__":
     b = get_bit_array(Font3)
 
     ae = Autoencoder.load_model(string_argument)
+    error = ae.train(b, b, 100000)
+
+    current_datetime = datetime.now()
+    datetime_string = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+    ae.save_model(f"./models/special/autoencoder_lr{ae.mlp.original_learning_rate}_hidden{ae.mlp.dimensions}_{datetime_string}_error{error}.pkl")
 
     results = []
     errors = []
+    latent_iamges = []
     for i in range(len(b)):
         result, error = ae.mlp.predict_with_error(b[i], b[i])
         results.append(result)
         errors.append(error)
+        latent_iamges.append(ae.get_latent_image(b[i]))
 
     print(errors)
     render_results(results)
     render_results(np.array(b))
+    plt.show()
+    print(latent_iamges)
+
+    # Example list of (x, y) items
+    xy_items = latent_iamges
+
+    # Separate the list into x and y components
+    x = [item[0] for item in xy_items]
+    y = [item[1] for item in xy_items]
+
+    # Create the plot
+    plt.scatter(x, y)
+
+    # Add labels and title
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Scatter Plot of (x, y) items')
+
+    # Display the plot
     plt.show()

@@ -50,14 +50,32 @@ class Autoencoder():
                                         activation_func_range,
                                         percentage_threshold
                                         )
+        self.latent_image_dimension = 1 + len(hidden_node_sizes)
 
     def train(self, dataset, expected, max_epochs: int = 1000):
         return self.mlp.train(dataset, expected, max_epochs)
 
-
     def save_model(self, file_path):
         with open(file_path, 'wb') as file:
             pickle.dump(self, file)
+
+    def get_latent_image(self, input):
+        for i in range(len(input)):
+            input[i] = feature_scaling(
+                input[i], self.mlp.input_range, self.mlp.activation_func_range)
+        x_input = np.array([1] + input)  # Add bias to input
+        activations = [x_input.T]
+
+        # Forward propagate input through each layer
+        for i in range(self.latent_image_dimension):
+            h = activations[-1].dot(self.mlp.weights[i])  # Compute weighted sum
+
+            activation = self.mlp.activation_func(h)  # Output layer
+            activations.append(activation)
+
+        # Return output of the last layer (predictions)
+        return feature_scaling(
+            activations[-1], self.mlp.activation_func_range, self.mlp.expected_range)
 
     @staticmethod
     def load_model(file_path):
