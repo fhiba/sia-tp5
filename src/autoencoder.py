@@ -36,10 +36,11 @@ class Autoencoder():
         activation_func_range=(0, 1),
         percentage_threshold=0.000001
     ):
+        reverse = hidden_node_sizes[::-1]
         self.mlp = MultiLayerPerceptron(learning_rate,
                                         input_size,
                                         hidden_node_sizes +
-                                        [2] + hidden_node_sizes,
+                                        [2] + reverse,
                                         input_size,
                                         input_range,
                                         expected_range,

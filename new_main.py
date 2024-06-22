@@ -1,7 +1,10 @@
+from datetime import datetime
 from src.multi import MultiLayerPerceptron
+from src.autoencoder import Autoencoder
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import itertools
 
 Font3 = [
     [0x04, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00],   # 0x60, `
@@ -67,38 +70,7 @@ def get_bit_array(font):
     return font_bit_arrays
 
 
-if __name__ == "__main__":
-    # dataset = [
-    #     [1, 1],
-    #     [1, 0],
-    #     [3, 0],
-    #     [0, 1]
-    # ]
-
-    # expected = [
-    #     [2, 2],
-    #     [1, 2],
-    #     [3, 6],
-    #     [1, 0]
-    # ]
-
-    # mlp = MultiLayerPerceptron(0.1, 2, [2, 2, 3], 2, (0, 3), (0, 6))
-    # mlp.train(dataset, expected, 10000)
-    # print(mlp.predict([1, 1]))
-    # print(mlp.predict([1, 0]))
-    # print(mlp.predict([0, 0]))
-    # print(mlp.predict([2, 0]))
-
-    render_char(Font3[2])
-
-    b = get_bit_array(Font3)
-    print(np.shape(b))
-
-    mlp = MultiLayerPerceptron(0.01, 35, [10, 2, 10], 35, (0, 1), (0, 1))
-
-    mlp.train(b, b, 10000)
-    result = mlp.predict(b[1])
-
+def render_result(result):
     if result.size != 35:
         raise ValueError("The input matrix must be 5x5.")
 
@@ -106,7 +78,88 @@ if __name__ == "__main__":
     matrix = result.reshape(7, 5)
 
     # Create the heatmap
-    plt.figure(figsize=(7, 5))
+    fig, ax = plt.subplots(figsize=(2, 2))
     sns.heatmap(matrix, annot=False, cbar=False, square=True, linewidth=2,
-                linecolor='black', cmap='coolwarm', xticklabels=False, yticklabels=False)
+                linecolor='black', cmap='coolwarm', xticklabels=False, yticklabels=False, ax=ax)
+    ax.axis('off')
+
+    # Convert the plot to numerical data
+    fig.canvas.draw()
+    image_data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    image_data = image_data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+    plt.close(fig)  # Close the figure to avoid displaying it
+
+    return image_data
+
+
+def relu(value):
+    return np.maximum(0, value)
+
+
+def relu_derivative(value):
+    return np.where(value > 0, 1, 0)
+
+
+if __name__ == "__main__":
+    render_char(Font3[2])
+
+    b = get_bit_array(Font3)
+    print(np.shape(b))
+
+    learning_rates = [0.001]
+    hidden_layers = [
+        [28, 22, 17, 10, 5]
+    ]
+
+    # Iterate through all combinations of learning rates and hidden layers
+    for learning_rate, hidden_layer in itertools.product(learning_rates, hidden_layers):
+        print(hidden_layer)
+        # Create and train the autoencoder
+        ae = Autoencoder(learning_rate, len(
+            b[0]), hidden_layer, (0, 1), (0, 1))
+        error = ae.train(b, b, 10000)
+
+        # Save the model with a timestamp and the error rate in the filename
+        current_datetime = datetime.now()
+        datetime_string = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        ae.save_model(f"./models/ae/autoencoder_lr{learning_rate}_hidden{hidden_layer}_{datetime_string}_error{error}.pkl")
+
+    exit()
+    learning_rate = 0.001
+    hidden_layer = [30, 10]
+    ae = Autoencoder(learning_rate, len(b[0]), hidden_layer, (0, 1), (0, 1))
+
+    # mlp = MultiLayerPerceptron(
+    #     0.001, 35, [10, 10, 2, 10, 10], 35, (0, 1), (0, 1))
+
+    error = ae.train(b, b, 10000)
+    print(error)
+
+    current_datetime = datetime.now()
+    datetime_string = current_datetime.strftime(
+        "%Y-%m-%d_%H-%M-%S")
+
+    ae.save_model("./models/autoencoder_" +
+                  datetime_string + "_" + str(error) + ".pkl")
+
+
+    exit()
+    mlp = MultiLayerPerceptron.load_model("models/model.pkl")
+    results = []
+    for i in range(len(b)):
+        result = mlp.predict(b[i])
+        results.append(result)
+
+    fig, axes = plt.subplots(4, 8, figsize=(20, 10))
+
+    # Plot each result on the grid
+    for i, result in enumerate(results):
+        ax = axes[i // 8, i % 8]
+        ax.set_title(f"Result {i+1}")
+        plot = render_result(result)
+        ax.imshow(plot)
+        ax.axis('off')
+
+    plt.tight_layout()
     plt.show()

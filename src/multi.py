@@ -11,8 +11,9 @@ def exp_activation_func(value):
 
 
 def exp_activation_func_derivative(value):
-    activation_function = exp_activation_func(value)
-    return activation_function * (1 - activation_function)
+    # activation_function = exp_activation_func(value)
+    # return activation_function * (1 - activation_function)
+    return value * (1 - value)
 
 
 def feature_scaling(value: float, from_int: tuple[float, float], to_int: tuple[float, float]) -> float:
@@ -112,7 +113,8 @@ class MultiLayerPerceptron():
 
             error = self.compute_error(np.array(outputs), np.array(expected))
             if epoch % 1000 == 0:
-                print(error)
+                print("epoch:", epoch)
+                print("min error:", self.min_error)
 
             if self.min_error > error:
                 self.min_error = error
@@ -179,7 +181,7 @@ class MultiLayerPerceptron():
 
     def compute_error(self, predicted, expected):
         output_errors = predicted - expected
-        return np.power(abs(output_errors), 2).sum() / self.weights[0].shape[0]
+        return np.mean(np.square(output_errors))
 
     def save_model(self, file_path):
         with open(file_path, 'wb') as file:

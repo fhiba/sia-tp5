@@ -92,6 +92,7 @@ def render_result(result):
 
     return image_data
 
+
 def render_results(results):
     fig, axes = plt.subplots(4, 8, figsize=(20, 10))
 
@@ -103,6 +104,14 @@ def render_results(results):
         ax.axis('off')
 
     plt.tight_layout()
+
+
+def relu(value):
+    return np.maximum(0, value)
+
+
+def relu_derivative(value):
+    return np.where(value > 0, 1, 0)
 
 
 if __name__ == "__main__":
