@@ -1,5 +1,3 @@
-from datetime import datetime
-from src.multi import MultiLayerPerceptron
 from src.autoencoder import Autoencoder
 from data.font import Font3, Font3Tags
 import numpy as np

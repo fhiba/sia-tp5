@@ -1,4 +1,3 @@
-from src.multi_layer_perceptron import MultiLayerPerceptron
 from src.encoder import Encoder
 from src.decoder import Decoder
 from data.font import Font3

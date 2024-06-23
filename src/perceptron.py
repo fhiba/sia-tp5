@@ -1,10 +1,7 @@
 import sys
-import csv
 from typing import Optional
 import numpy as np
-import random
 
-import time
 
 def online_training_method(length: int) -> list[int]:
     return np.random.randint(0, length, 1)
