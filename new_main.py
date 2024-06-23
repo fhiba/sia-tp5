@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     learning_rates = [0.001]
     hidden_layers = [
-        [28, 22, 17, 10]
+        [32, 24, 16, 8]
     ]
 
     # Iterate through all combinations of learning rates and hidden layers

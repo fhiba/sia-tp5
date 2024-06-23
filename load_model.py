@@ -5,6 +5,9 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import sys
+import random
+
+plt.rcParams['figure.dpi'] = 250
 
 Font3 = [
     [0x04, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00],   # 0x60, `
@@ -124,13 +127,15 @@ if __name__ == "__main__":
     string_argument = sys.argv[1]
 
     b = get_bit_array(Font3)
+    font_bit_array = b
 
     ae = Autoencoder.load_model(string_argument)
-    error = ae.train(b, b, 100000)
 
-    current_datetime = datetime.now()
-    datetime_string = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
-    ae.save_model(f"./models/special/autoencoder_lr{ae.mlp.original_learning_rate}_hidden{ae.mlp.dimensions}_{datetime_string}_error{error}.pkl")
+    # Retrain loaded model
+    # error = ae.train(b, b, 100000)
+    # current_datetime = datetime.now()
+    # datetime_string = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+    # ae.save_model(f"./models/special/autoencoder_lr{ae.mlp.original_learning_rate}_hidden{ae.mlp.dimensions}_{datetime_string}_error{error}.pkl")
 
     results = []
     errors = []
@@ -139,7 +144,7 @@ if __name__ == "__main__":
         result, error = ae.mlp.predict_with_error(b[i], b[i])
         results.append(result)
         errors.append(error)
-        latent_iamges.append(ae.get_latent_image(b[i]))
+        latent_iamges.append(ae.encode(b[i]))
 
     print(errors)
     render_results(results)
@@ -149,6 +154,12 @@ if __name__ == "__main__":
 
     # Example list of (x, y) items
     xy_items = latent_iamges
+
+    # Corresponding tags
+    tags = [
+        '\'', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+        'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'# , 'DEL'
+    ]
 
     # Separate the list into x and y components
     x = [item[0] for item in xy_items]
@@ -162,5 +173,64 @@ if __name__ == "__main__":
     plt.ylabel('Y-axis')
     plt.title('Scatter Plot of (x, y) items')
 
+    # Add tags to each point
+    for i, tag in enumerate(tags):
+        plt.text(x[i] - 0.01, y[i], tag, fontsize=12, ha='right')
+
+    # Select two random points from the list
+    point1, point2 = random.sample(xy_items, 2)
+
+    # Calculate the slope (m) and the y-intercept (b)
+    x1, y1 = point1
+    x2, y2 = point2
+
+    # Ensure the points are not identical (which would cause division by zero)
+    while x1 == x2:
+        point2 = random.sample(xy_items, 1)[0]
+        x2, y2 = point2
+
+    m = (y2 - y1) / (x2 - x1)
+    b = y1 - m * x1
+
+    print(f"Selected points: {point1}, {point2}")
+    print(f"Linear function: y = {m}x + {b}")
+
+    # Create the plot
+    # plt.scatter(*zip(*xy_items))
+
+    # Plot the linear function
+    x_values = [min(x1, x2), max(x1, x2)]
+    y_values = [m * x + b for x in x_values]
+    plt.plot(x_values, y_values, 'r', label=f'y = {m:.2f}x + {b:.2f}')
     # Display the plot
+    # plt.show()
+
+    x_values = np.linspace(min(x1, x2), max(x1, x2), 32)
+    y_values = m * x_values + b
+
+    results = []
+    # a_latent_image = ae.encode(font_bit_array[1])
+    # b_latent_image = ae.encode(font_bit_array[2])
+    # result_a = ae.decode(a_latent_image)
+    # result_b = ae.decode(b_latent_image)
+    # results.append(result_a)
+    # results.append(result_b)
+    # render_results(results)
+    # plt.show()
+    # exit()
+
+    for pair in zip(x_values, y_values):
+        latent_iamge = np.array(pair)
+        result = ae.decode(latent_iamge)
+        results.append(result)
+        latent_iamges.append(latent_iamge)
+    render_results(results)
+    plt.show()
+
+    results = []
+    for _ in range(32):
+        image = [np.random.random(), np.random.random()]
+        results.append(ae.decode(image))
+    print(results)
+    render_results(results)
     plt.show()

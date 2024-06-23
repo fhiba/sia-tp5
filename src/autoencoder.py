@@ -59,7 +59,7 @@ class Autoencoder():
         with open(file_path, 'wb') as file:
             pickle.dump(self, file)
 
-    def get_latent_image(self, input):
+    def encode(self, input):
         for i in range(len(input)):
             input[i] = feature_scaling(
                 input[i], self.mlp.input_range, self.mlp.activation_func_range)
@@ -76,6 +76,25 @@ class Autoencoder():
         # Return output of the last layer (predictions)
         return feature_scaling(
             activations[-1], self.mlp.activation_func_range, self.mlp.expected_range)
+
+    def decode(self, input):
+        for i in range(len(input)):
+            input[i] = feature_scaling(
+                input[i], self.mlp.input_range, self.mlp.activation_func_range)
+        x_input = np.array(input)  # Add bias to input
+        activations = [x_input.T]
+
+        # Forward propagate input through each layer
+        for i in range(self.latent_image_dimension, len(self.mlp.weights)):
+            h = activations[-1].dot(self.mlp.weights[i])  # Compute weighted sum
+
+            activation = self.mlp.activation_func(h)  # Output layer
+            activations.append(activation)
+
+        # Return output of the last layer (predictions)
+        return feature_scaling(
+            activations[-1], self.mlp.activation_func_range, self.mlp.expected_range)
+
 
     @staticmethod
     def load_model(file_path):
