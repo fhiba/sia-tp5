@@ -28,7 +28,7 @@ class MultiLayerPerceptron():
         self,
         learning_rate: float,
         input_size: int,
-        hidden_node_sizes: [int],
+        hidden_node_sizes: list[int],
         output_size: int,
         input_range,
         expected_range,

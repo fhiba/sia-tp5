@@ -244,7 +244,7 @@ class MultiLayerPerceptron():
         output_errors = self.Y.T - O
         return np.power(output_errors, 2).sum() / p
 
-    def compute_deltas(self, indexes: [int]):
+    def compute_deltas(self, indexes: list[int]):
         return
 
     def is_converged(self, O):

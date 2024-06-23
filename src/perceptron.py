@@ -6,13 +6,11 @@ import random
 
 import time
 
-x_tuple = (float, float, float)
-float_array = [float, float, float]
-def online_training_method(length: int) -> [int]:
+def online_training_method(length: int) -> list[int]:
     return np.random.randint(0, length, 1)
 
 
-def batch_training_method(length: int) -> [int]:
+def batch_training_method(length: int) -> list[int]:
     return range(length)
 
 
@@ -34,7 +32,7 @@ class Perceptron:
         self.data_len = len(self.data)
         self.training_method = training_method
 
-    def projection(self, x: x_tuple) -> float:
+    def projection(self, x: list[int]) -> float:
         return x[0] * self.weights[0] + \
             x[1] * self.weights[1] + self.weights[2]
 
@@ -44,7 +42,7 @@ class Perceptron:
         else:
             return -1
 
-    def predict(self, x: x_tuple) -> int:
+    def predict(self, x: list[int]) -> int:
         return self.step_activation(self.projection(x))
 
     def train_indexes(self, indexes, epochs: Optional[int] = 1000):
@@ -83,7 +81,7 @@ class Perceptron:
         excitations = np.dot(self.data, self.weights)
         return np.vectorize(self.activation_func)(excitations)
 
-    def get_range_outputs(self, indexes: [int]):
+    def get_range_outputs(self, indexes: list[int]):
         excitations = np.dot(self.data[indexes], self.weights)
         return np.vectorize(self.activation_func)(excitations)
 
