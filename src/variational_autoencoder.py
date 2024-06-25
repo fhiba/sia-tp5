@@ -79,7 +79,7 @@ class VariationalAutoencoder():
             latent_dim,
             reverse,
             input_size,
-            input_range,
+            (0, 1),
             expected_range,
             activation_func,
             activation_func_derivative,
@@ -115,7 +115,8 @@ class VariationalAutoencoder():
         P = np.clip(predicted, epsilon, 1 - epsilon)
         return np.mean(-expected * np.log(P) - (1 - expected) * np.log(1 - P))
 
-    def _binary_cross_entropy_derivative(self, expected, predicted, epsilon=1e-7): P = np.clip(predicted, epsilon, 1 - epsilon)
+    def _binary_cross_entropy_derivative(self, expected, predicted, epsilon=1e-7):
+        P = np.clip(predicted, epsilon, 1 - epsilon)
         return (P - expected) / (P * (1 - P))
 
     def _kl_divergence(self, z_mean: np.array, z_log_var: np.array):
