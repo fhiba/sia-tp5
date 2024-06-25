@@ -34,13 +34,14 @@ class Autoencoder():
         activation_func_derivative=exp_activation_func_derivative,
         training_strategy=batch,
         activation_func_range=(0, 1),
-        percentage_threshold=0.000001
+        percentage_threshold=0.000001,
+        latent_dim=2
     ):
         reverse = hidden_node_sizes[::-1]
         self.mlp = MultiLayerPerceptron(learning_rate,
                                         input_size,
                                         hidden_node_sizes +
-                                        [2] + reverse,
+                                        [latent_dim] + reverse,
                                         input_size,
                                         input_range,
                                         expected_range,
@@ -59,7 +60,7 @@ class Autoencoder():
         with open(file_path, 'wb') as file:
             pickle.dump(self, file)
 
-    def encode(self, input):
+    def encode_no_scaling(self, input):
         for i in range(len(input)):
             input[i] = feature_scaling(
                 input[i], self.mlp.input_range, self.mlp.activation_func_range)
@@ -74,13 +75,13 @@ class Autoencoder():
             activations.append(activation)
 
         # Return output of the last layer (predictions)
-        return feature_scaling(
-            activations[-1], self.mlp.activation_func_range, self.mlp.expected_range)
+        return activations[-1]
 
-    def decode(self, input):
-        for i in range(len(input)):
-            input[i] = feature_scaling(
-                input[i], self.mlp.input_range, self.mlp.activation_func_range)
+    def encode(self, input):
+        return feature_scaling(
+            self.encode_no_scaling(input), self.mlp.activation_func_range, self.mlp.expected_range)
+
+    def decode_no_scaling(self, input):
         x_input = np.array(input)  # Add bias to input
         activations = [x_input.T]
 
@@ -90,10 +91,16 @@ class Autoencoder():
 
             activation = self.mlp.activation_func(h)  # Output layer
             activations.append(activation)
+        return activations[-1]
 
+    def decode(self, input):
+        for i in range(len(input)):
+            input[i] = feature_scaling(
+                input[i], self.mlp.input_range, self.mlp.activation_func_range)
+        activation = self.decode_no_scaling(input)
         # Return output of the last layer (predictions)
         return feature_scaling(
-            activations[-1], self.mlp.activation_func_range, self.mlp.expected_range)
+            activation, self.mlp.activation_func_range, self.mlp.expected_range)
 
 
     @staticmethod

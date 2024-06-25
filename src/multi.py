@@ -39,6 +39,7 @@ class MultiLayerPerceptron():
         percentage_threshold=0.000001,
         adaptative_eta=False
     ):
+        hidden_node_sizes_with_bias = [size + 1 for size in hidden_node_sizes]
         # Add one to the input to have the bias
         dimensions = [input_size + 1] + hidden_node_sizes + [output_size]
         matrices = []
@@ -119,9 +120,9 @@ class MultiLayerPerceptron():
             expected[i] = feature_scaling(
                 np.array(expected[i]), self.expected_range, self.activation_func_range).tolist()
 
+        inputs = [[1] + s for s in dataset]
         for epoch in range(max_epochs):
-            inputs = self.training_strategy(dataset)
-            inputs = [[1] + s for s in inputs]
+            inputs = self.training_strategy(inputs)
             dWs = []
             outputs = []
             for input, target in zip(inputs, expected):
@@ -160,6 +161,7 @@ class MultiLayerPerceptron():
 
     def backward_propagation(self, h_outputs, v_inputs, expected):
         output_error = np.array(expected) - v_inputs[-1]
+        print("bpoe", output_error)
         delta = np.array(
             output_error * self.activation_func_derivative(h_outputs[-1]))
         deltas = [delta]
@@ -173,6 +175,23 @@ class MultiLayerPerceptron():
             deltas.append(delta)
         dWs.reverse()
         return dWs
+
+    def backward_propagation_error(self, h_outputs, v_inputs, expected, output_error):
+        delta = np.array(
+            output_error * self.activation_func_derivative(h_outputs[-1]))
+        print(delta)
+        deltas = [delta]
+        dWs = [np.array(self.learning_rate * np.outer(delta, v_inputs[-2]).T)]
+        # Backpropagate the error
+        for i in range(len(self.weights) - 2, -1, -1):
+            delta = deltas[-1].dot(self.weights[i + 1].T) * \
+                self.activation_func_derivative(h_outputs[i])
+            dWs.append(np.array(self.learning_rate *
+                       np.outer(delta, v_inputs[i]).T))
+            deltas.append(delta)
+        prev_layer_delta_sum = np.array(deltas[-1]).dot(self.weights[0].T)
+        dWs.reverse()
+        return prev_layer_delta_sum, dWs
 
     def update_weights(self, dWs):
         # Update the weights using the calculated differentials

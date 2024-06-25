@@ -166,3 +166,4 @@ cython_debug/
 *.swp
 .vscode
 models
+data
