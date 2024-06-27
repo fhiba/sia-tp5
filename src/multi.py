@@ -60,7 +60,6 @@ class MultiLayerPerceptron():
         self.min_learning_rate = 0.0005
         self.adaptative_eta = adaptative_eta
 
-
         self.activation_func = activation_func
         self.activation_func_derivative = activation_func_derivative
         self.training_strategy = training_strategy
@@ -82,7 +81,8 @@ class MultiLayerPerceptron():
 
     def initialize_momentum_params(self):
         self.beta = 0.9
-        self.velocity = [np.zeros_like(w) for w in self.weights]  # Initialize velocity
+        self.velocity = [np.zeros_like(w)
+                         for w in self.weights]  # Initialize velocity
 
     def predict_with_error(self, input, expected):
         result = self.predict(input)
@@ -208,7 +208,6 @@ class MultiLayerPerceptron():
 
     def backward_propagation(self, h_outputs, v_inputs, expected):
         output_error = np.array(expected) - v_inputs[-1]
-        # print("bpoe", output_error)
         delta = np.array(
             output_error * self.activation_func_derivative(h_outputs[-1]))
         deltas = [delta]
@@ -226,7 +225,6 @@ class MultiLayerPerceptron():
     def backward_propagation_error(self, h_outputs, v_inputs, expected, output_error):
         delta = np.array(
             output_error * self.activation_func_derivative(h_outputs[-1]))
-        print(delta)
         deltas = [delta]
         dWs = [np.array(self.learning_rate * np.outer(delta, v_inputs[-2]).T)]
         # Backpropagate the error
@@ -266,7 +264,8 @@ class MultiLayerPerceptron():
         alpha = self.learning_rate
         for i in range(len(self.weights)):
             for dW in dWs:
-                self.velocity[i] = self.beta * self.velocity[i] + (1 - self.beta) * dW[i]
+                self.velocity[i] = self.beta * \
+                    self.velocity[i] + (1 - self.beta) * dW[i]
                 self.weights[i] -= alpha * self.velocity[i]
 
     def is_converged(self, error):

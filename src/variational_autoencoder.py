@@ -20,14 +20,14 @@ def batch(X):
     return X
 
 
-def exp_activation_func(value):
-    clipped_value = np.clip(value, -100000, 100000)
+def sigmoid_activation_func(value):
+    clipped_value = np.clip(value, -500, 500)
     return 1 / (1 + np.exp(-clipped_value))
 
 
-def exp_activation_func_derivative(value):
-    activation_function = exp_activation_func(value)
-    return activation_function * (1 - activation_function)
+def sigmoid_activation_func_derivative(value):
+    sigmoid_output = sigmoid_activation_func(value)
+    return sigmoid_output * (1 - sigmoid_output)
 
 
 def feature_scaling(value: float, from_int: tuple[float, float], to_int: tuple[float, float]) -> float:
@@ -45,8 +45,8 @@ class VariationalAutoencoder():
         latent_dim: int,
         input_range,
         expected_range,
-        activation_func=exp_activation_func,
-        activation_func_derivative=exp_activation_func_derivative,
+        activation_func=sigmoid_activation_func,
+        activation_func_derivative=sigmoid_activation_func_derivative,
         training_strategy=batch,
         activation_func_range=(0, 1),
         percentage_threshold=0.000001,
@@ -79,7 +79,7 @@ class VariationalAutoencoder():
             latent_dim,
             reverse,
             input_size,
-            input_range,
+            (0, 1),
             expected_range,
             activation_func,
             activation_func_derivative,
@@ -91,14 +91,6 @@ class VariationalAutoencoder():
         print(self.encoder.dimensions)
         print(self.decoder.dimensions)
 
-    def reparam(self, means: np.array, log_covs: np.array):
-        epsilon = np.random.normal(size=means.shape)
-        return epsilon, means + epsilon * np.exp(log_covs / 2)
-        # return epsilon, means + epsilon * log_covs
-
-    def _kl_divergence(self, z_mean: np.array, z_log_var: np.array):
-        return -0.5 * np.sum(1 + z_log_var - np.square(z_mean) - np.exp(z_log_var))
-
     def compute_error(self, predicted, expected):
         output_errors = predicted - expected
         return np.mean(np.square(output_errors))
@@ -107,7 +99,12 @@ class VariationalAutoencoder():
         output_errors = predicted - expected
         return 2 * abs(output_errors)
 
+    def reparam(self, means: np.array, log_covs: np.array):
+        epsilon = np.random.normal(size=means.shape)
+        return epsilon, means + epsilon * np.exp(log_covs / 2) - 1
+
     def _vae_loss(self, expected, predicted, z_mean, z_log_var):
+        # reconstruction_loss = self._binary_cross_entropy(expected, predicted)
         reconstruction_loss = self._binary_cross_entropy(expected, predicted)
         kl_loss = self._kl_divergence(z_mean, z_log_var) * self.kl_weight
         d_reconstruction_loss = self._binary_cross_entropy_derivative(
@@ -121,6 +118,9 @@ class VariationalAutoencoder():
     def _binary_cross_entropy_derivative(self, expected, predicted, epsilon=1e-7):
         P = np.clip(predicted, epsilon, 1 - epsilon)
         return (P - expected) / (P * (1 - P))
+
+    def _kl_divergence(self, z_mean: np.array, z_log_var: np.array):
+        return -0.5 * np.sum(1 + z_log_var - np.square(z_mean) - np.exp(z_log_var))
 
     def is_converged(self, error):
         expected_amplitude = self.expected_range[1] - self.expected_range[0]
@@ -136,6 +136,7 @@ class VariationalAutoencoder():
             decoder_dWs = []
             encoder_dWs = []
             img = []
+            outputs = []
             total_loss = 0
             for input, target in zip(inputs, expected):
                 encoder_h_outputs, encoder_v_inputs = activations = self.encoder.forward_propagation(
@@ -145,17 +146,14 @@ class VariationalAutoencoder():
 
                 means = activations[:self.latent_size]
                 log_covs = activations[self.latent_size:]
-                print("mean, var", (means, log_covs))
 
                 epsilon, z = self.reparam(means, log_covs)
 
-                print("  z", z)
                 z = np.concatenate(([1], z))
                 decoder_h_outputs, decoder_v_inputs = self.decoder.forward_propagation(
                     z)
 
-                img = feature_scaling(
-                    decoder_v_inputs[-1], self.activation_func_range, self.expected_range).tolist()
+                outputs.append(decoder_v_inputs[-1])
 
                 reconstruction_loss, kl_loss, d_reconstruction_loss = self._vae_loss(
                     np.array(target), decoder_v_inputs[-1], means, log_covs)
@@ -167,37 +165,27 @@ class VariationalAutoencoder():
                     decoder_h_outputs, decoder_v_inputs, target, -1 * d_reconstruction_loss)
                 decoder_dWs.append(decoder_dW)
 
-                print("  means", means)
-                print("  prev", prev_layer_delta_sum[1:])
-                kl_gradients = np.append(0.5 * means, 0.5 * (np.exp(log_covs) - 1))
+                kl_gradients = np.append(means, 0.5 * (np.exp(log_covs) - 1))
                 rec_gradients = np.append(
-                    0.5 * prev_layer_delta_sum[1:],
+                    prev_layer_delta_sum[1:],
                     prev_layer_delta_sum[1:] * epsilon *
                     np.exp(log_covs * 0.5) * 0.5
                 )
-                # gradients = kl_gradients + rec_gradients
                 gradients = [x + y for x,
                              y in zip(kl_gradients, rec_gradients)]
 
-                # gradients = np.append(
-                #     np.mean(prev_layer_delta_sum, axis=0),
-                #     0.5 * np.mean(prev_layer_delta_sum * (np.exp(log_covs)))
-                # )
-                print("prev_layer_delta_sum", prev_layer_delta_sum)
-                # gradients = np.append(kl_loss * 0.5, prev_layer_delta_sum * 0.5)
-
-                print("gradients:", gradients)
                 _, encoder_dW = self.encoder.backward_propagation_error(
                     encoder_h_outputs, encoder_v_inputs, gradients, gradients)
                 encoder_dWs.append(encoder_dW)
 
             self.decoder.update_weights_adam(decoder_dWs)
             self.encoder.update_weights_adam(encoder_dWs)
+            error = self.compute_error(np.array(outputs), np.array(expected))
 
             if epoch % 100 == 0:
                 print("epoch:", epoch)
                 print("min error:", self.min_error)
-                display_image(np.array(img))
+                # display_image(np.array(img))
 
             if self.min_error > error:
                 self.min_error = error
@@ -211,16 +199,18 @@ class VariationalAutoencoder():
         self.decoder.weights = self.decoder.min_weights
         return self.min_error
 
-    def predict(self, input):
+    def predict_latent(self, input):
         input = np.concatenate(([1], input))
         print(input)
         _, v_in = self.encoder.forward_propagation(input)
         means = v_in[-1][:self.latent_size]
         log_covs = v_in[-1][self.latent_size:]
         epailon, z = self.reparam(means, log_covs)
-        # print("z", z)
-        z = np.concatenate(([1], means))
-        # z = [np.concatenate(([1], s)) for s in v_in[-1]]
-        print("z", z)
-        res = self.decoder.predict(z)
-        return np.array(res)
+        z = np.concatenate(([1], z))
+        return z
+
+    def predict(self, latent_img):
+        print(latent_img)
+        res = self.decoder.predict(latent_img)
+        print(res)
+        return res
