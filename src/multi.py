@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-
+import copy
 
 def batch(X):
     return X
@@ -148,6 +148,53 @@ class MultiLayerPerceptron():
             self.update_learning_rate(epoch, max_epochs)
         self.weights = self.min_weights
         return self.min_error
+     
+    def train_with_noise(self, dataset, expected,noise_function,noise_level, max_epochs: int = 1000):
+        for i in range(len(expected)):
+            expected[i] = feature_scaling(
+                np.array(expected[i]), self.expected_range, self.activation_func_range).tolist()
+
+        errors = []
+        inputs = [[1] + s for s in dataset]
+        for epoch in range(max_epochs):
+            inputs = self.training_strategy(inputs)
+            dWs = []
+            outputs = []
+            for input, target in zip(inputs, expected):
+                h_outputs, v_inputs = self.forward_propagation(input)
+                outputs.append(v_inputs[-1])
+
+                dWs.append(self.backward_propagation(
+                    h_outputs, v_inputs, target))
+            
+            error = self.compute_error(np.array(outputs), np.array(expected))
+            errors.append(error)
+            if epoch % 1000 == 0:
+                print("epoch:", epoch)
+                print("min error:", self.min_error)
+                
+            if epoch % 100 == 0:
+                
+                if epoch % 5000 == 0:
+                    dataset = copy.deepcopy(expected)
+                    inputs = [[1] + s for s in dataset]
+                else :
+                    dataset = noise_function(copy.deepcopy(expected),noise_level)
+                    inputs = [[1] + s for s in dataset]
+                
+
+            if self.min_error > error:
+                self.min_error = error
+                self.min_weights = self.weights
+
+            if self.is_converged(error):
+                break
+
+            self.update_weights_adam(dWs)
+            self.update_learning_rate(epoch, max_epochs)
+        self.weights = self.min_weights
+        return self.min_error, errors
+
 
     def forward_propagation(self, input):
         h_outputs = []
@@ -161,7 +208,7 @@ class MultiLayerPerceptron():
 
     def backward_propagation(self, h_outputs, v_inputs, expected):
         output_error = np.array(expected) - v_inputs[-1]
-        print("bpoe", output_error)
+        # print("bpoe", output_error)
         delta = np.array(
             output_error * self.activation_func_derivative(h_outputs[-1]))
         deltas = [delta]

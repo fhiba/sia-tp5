@@ -55,6 +55,9 @@ class Autoencoder():
 
     def train(self, dataset, expected, max_epochs: int = 1000):
         return self.mlp.train(dataset, expected, max_epochs)
+    
+    def train_with_noise(self,dataset,expected,noise_function,noise_level, max_epochs: int=1000):
+        return self.mlp.train_with_noise(dataset,expected,noise_function,noise_level,max_epochs)
 
     def save_model(self, file_path):
         with open(file_path, 'wb') as file:
